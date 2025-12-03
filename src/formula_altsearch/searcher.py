@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from itertools import chain, combinations
+from itertools import combinations
 
 from scipy.optimize import minimize
 
@@ -15,18 +15,16 @@ def load_formula_database(filepath):
 
 
 def all_combinations(database, exclude):
-    keys = [key for key in database.keys() if key != exclude]
-    return chain(*[combinations(keys, i) for i in range(1, min(len(keys), 2) + 1)])
+    keys = [key for key in database if key != exclude]
+    for i in range(1, min(len(keys), 2) + 1):
+        yield from combinations(keys, i)
 
 
 def calculate_delta(x, target_composition, combination, database, penalty_factor):
     combined_composition = {}
     for i, formula in enumerate(combination):
         for herb, amount in database[formula].items():
-            if herb in combined_composition:
-                combined_composition[herb] += amount * x[i]
-            else:
-                combined_composition[herb] = amount * x[i]
+            combined_composition[herb] = combined_composition.get(herb, 0) + amount * x[i]
 
     delta = 0
     for herb, target_amount in target_composition.items():
@@ -44,12 +42,12 @@ def calculate_match(target_composition, combination, database, penalty_factor):
     bounds = [(0, 200) for _ in combination]
     result = minimize(calculate_delta, initial_guess, args=(target_composition, combination, database, penalty_factor), method='SLSQP', bounds=bounds)
 
-    if result.success:
-        dosages = result.x
-        match_percentage = 100 - result.fun
-        return match_percentage, combination, dosages
-    else:
+    if not result.success:
         return 0, combination, []
+
+    match_percentage = 100 - result.fun
+    dosages = result.x
+    return match_percentage, combination, dosages
 
 
 def find_best_matches(name, database, target_composition, penalty_factor, top_n=5):
@@ -59,6 +57,6 @@ def find_best_matches(name, database, target_composition, penalty_factor, top_n=
     matches = [calculate_match(target_composition, combo, database, penalty_factor) for combo in all_possible_combinations]
     elapsed = time.time() - start
 
-    best_matches = sorted(matches, key=lambda x: -x[0])[:top_n]
+    matches.sort(key=lambda x: -x[0])
 
-    return best_matches, elapsed
+    return matches[:top_n], elapsed

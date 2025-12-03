@@ -10,13 +10,6 @@ def parse_input_item(input_str):
     return None, None
 
 
-def adjust_target_composition_for_dosage(target_composition, input_dosage):
-    adjusted_target_composition = {}
-    for herb, amount in target_composition.items():
-        adjusted_target_composition[herb] = amount * input_dosage
-    return adjusted_target_composition
-
-
 def search(name, database, target_composition, penalty_factor, top_n):
     best_matches, elapsed = searcher.find_best_matches(name, database, target_composition, penalty_factor, top_n)
 
@@ -25,35 +18,30 @@ def search(name, database, target_composition, penalty_factor, top_n):
     for match in best_matches:
         match_percentage, combination, dosages = match
 
-        combined_composition = herbs_amount = {}
+        combined_composition = {}
         for dosage, formula in zip(dosages, combination):
             for herb, amount in database[formula].items():
-                if herb in herbs_amount:
-                    herbs_amount[herb] += amount * dosage
-                else:
-                    herbs_amount[herb] = amount * dosage
+                combined_composition[herb] = combined_composition.get(herb, 0) + dosage * amount
 
-        herbs_amount = dict(sorted(herbs_amount.items(), key=lambda item: (item[0] not in target_composition, item[0])))
-        herbs_amount = {f'**{herb}**' if herb in target_composition else herb: amount for herb, amount in herbs_amount.items()}
+        herbs_amount = sorted(combined_composition.items(), key=lambda item: (item[0] not in target_composition, item[0]))
 
-        missing_herbs = {herb: target_composition.get(herb, 0) - combined_composition.get(herb, 0) for herb in target_composition}
-        missing_herbs = {herb: amount for herb, amount in missing_herbs.items() if amount > 0}
+        missing_herbs = {
+            herb: amount
+            for herb in target_composition
+            if (amount := target_composition.get(herb)) and not combined_composition.get(herb)
+        }
 
-        combination_str = ', '.join([f'{formula}{dosage:.1f}' for formula, dosage in zip(combination, dosages)])
+        combination_str = ', '.join(f'{formula}{dosage:.1f}' for formula, dosage in zip(combination, dosages))
         print(f'匹配度: {match_percentage:.2f}%，組合: {combination_str}')
-        for herb, amount in herbs_amount.items():
+        for herb, amount in herbs_amount:
+            if herb in target_composition:
+                herb = f'**{herb}**'
             print(f'    {herb}: {amount:.2f}')
-
-        # 收集組合中已出現的藥材
-        combined_herbs = set()
-        for formula in combination:
-            combined_herbs.update(database[formula].keys())
 
         if missing_herbs:
             print('尚缺藥物：')
-            for herb in missing_herbs.keys():
-                if missing_herbs[herb] > 0 and herb not in combined_herbs:
-                    print(f'    {herb}')
+            for herb in missing_herbs:
+                print(f'    {herb}')
         else:
             print('所有目標藥材已被完全匹配。')
         print('\n')
@@ -71,29 +59,32 @@ def cmd_search(args):
     if not args.items:
         interactive_input(args)
 
+    formula_name = None
+    target_composition = {}
     if len(args.items) > 1:
-        adjusted_target_composition = {}
+        all_herbs = set()
+        for formula in database.values():
+            if len(formula) > 1:
+                all_herbs |= formula.keys()
+
         unknown_herbs = []
         for herb, amount in args.items:
-            if not any(herb in herbs for formula in database.values() for herbs in formula):
+            if herb not in all_herbs:
                 unknown_herbs.append(herb)
-            else:
-                if herb in adjusted_target_composition:
-                    adjusted_target_composition[herb] += amount
-                else:
-                    adjusted_target_composition[herb] = amount
+                continue
+            target_composition[herb] = target_composition.get(herb, 0) + amount
         if unknown_herbs:
             print(f'資料庫尚未收錄以下藥物：{", ".join(unknown_herbs)}')
-        else:
-            search(None, database, adjusted_target_composition, args.penalty, args.num)
+            return
     else:
         formula_name, input_dosage = args.items[0]
-        if formula_name in database:
-            target_composition = database[formula_name]
-            adjusted_target_composition = adjust_target_composition_for_dosage(target_composition, input_dosage)
-            search(formula_name, database, adjusted_target_composition, args.penalty, args.num)
-        else:
+        if formula_name not in database:
             print('資料庫尚未收錄此方劑。')
+            return
+        for herb, amount in database[formula_name].items():
+            target_composition[herb] = input_dosage * amount
+
+    search(formula_name, database, target_composition, args.penalty, args.num)
 
 
 def interactive_input(args):
