@@ -39,5 +39,45 @@ Homepage = "https://github.com/LiangWeiTseng/TCM"
 [project.scripts]
 fas = "formula_altsearch.__main__:main"
 
+[dependency-groups]
+lint = [
+    "flake8>=6.1",
+    "Flake8-pyproject>=1.2.3",
+    "pep8-naming>=0.13.2",
+    "flake8-comprehensions>=3.8",
+    "flake8-string-format>=0.3",
+    "flake8-quotes>=3.4",
+    "flake8-bugbear>=22.6.22",
+    "flake8-isort>=5.0",
+    "isort>=5.9.2",
+]
+dev = [
+    {include-group = "lint"},
+]
+
 [tool.setuptools.dynamic.version]
 attr = "formula_altsearch.__version__"
+
+[tool.flake8]
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+]
+max-line-length = 160
+
+# Flake8 Rules
+# https://www.flake8rules.com/
+
+# W503: Line break occurred before a binary operator
+ignore = [
+    "W503",
+]
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+
+# skip directories included by default
+# ref: https://pycqa.github.io/isort/docs/configuration/options.html

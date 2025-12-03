@@ -1,8 +1,9 @@
-from itertools import combinations, chain
-from scipy.optimize import minimize
 import json
 import os
 import time
+from itertools import chain, combinations
+
+from scipy.optimize import minimize
 
 DEFAULT_DATAFILE = os.path.normpath(os.path.join(__file__, '..', 'database.json'))
 
@@ -15,7 +16,7 @@ def load_prescription_database(filepath):
 
 def all_combinations(database, exclude):
     keys = [key for key in database.keys() if key != exclude]
-    return chain(*[combinations(keys, i) for i in range(1, min(len(keys), 2)+1)])
+    return chain(*[combinations(keys, i) for i in range(1, min(len(keys), 2) + 1)])
 
 
 def objective_func(x, target_composition, combination, database, penalty_factor):
@@ -52,7 +53,7 @@ def calculate_match(target_composition, combination, database, penalty_factor):
 
 
 def find_best_matches(name, database, adjusted_target_composition, penalty_factor, top_n=5):
-    all_possible_combinations = all_combinations(database, name if name else "")
+    all_possible_combinations = all_combinations(database, name if name else '')
 
     start = time.time()
     matches = [calculate_match(adjusted_target_composition, combo, database, penalty_factor) for combo in all_possible_combinations]
