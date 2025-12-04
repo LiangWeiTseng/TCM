@@ -1,4 +1,7 @@
 import unittest
+from io import StringIO
+from textwrap import dedent
+from unittest import mock
 
 import numpy
 
@@ -6,6 +9,75 @@ from formula_altsearch import searcher
 
 
 class TestUtilities(unittest.TestCase):
+    def test_load_formula_database(self):
+        database = searcher.load_formula_database(StringIO(dedent(
+            """\
+            - name: “張三”芍藥甘草湯濃縮細粒
+              key: 芍藥甘草湯
+              vendor: 張三製藥股份有限公司
+              url: https://example.org/?id=123
+              unit_dosage: 9.0
+              composition:
+                白芍: 12.0
+                炙甘草: 12.0
+            """
+        )))
+        self.assertEqual(database, {
+            '芍藥甘草湯': {
+                '炙甘草': 1.3333333333333333,
+                '白芍': 1.3333333333333333,
+            },
+        })
+
+    def test_load_formula_database_no_unit_dosage(self):
+        database = searcher.load_formula_database(StringIO(dedent(
+            """\
+            - name: “張三”芍藥甘草湯濃縮細粒
+              key: 芍藥甘草湯
+              vendor: 張三製藥股份有限公司
+              url: https://example.org/?id=123
+              composition:
+                白芍: 1.333
+                炙甘草: 1.333
+            """
+        )))
+        self.assertEqual(database, {
+            '芍藥甘草湯': {
+                '炙甘草': 1.333,
+                '白芍': 1.333,
+            },
+        })
+
+    @mock.patch.object(searcher, 'log')
+    def test_load_formula_database_duplicated_key(self, m_log):
+        """Should ignore an item with a duplicated key."""
+        database = searcher.load_formula_database(StringIO(dedent(
+            """\
+            - name: “張三”芍藥甘草湯濃縮細粒
+              key: 芍藥甘草湯
+              vendor: 張三製藥股份有限公司
+              url: https://example.org/?id=123
+              unit_dosage: 9.0
+              composition:
+                白芍: 12.0
+                炙甘草: 12.0
+            - name: “李四”芍藥甘草湯濃縮細粒
+              key: 芍藥甘草湯
+              vendor: 李四製藥股份有限公司
+              url: https://example.org/?id=456
+              unit_dosage: 8.0
+              composition:
+                白芍: 12.0
+                炙甘草: 12.0
+            """
+        )))
+        self.assertEqual(database, {
+            '芍藥甘草湯': {
+                '炙甘草': 1.3333333333333333,
+                '白芍': 1.3333333333333333,
+            },
+        })
+
     def test_all_combinations(self):
         database = {
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},

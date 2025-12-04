@@ -15,6 +15,7 @@ class TestCmdSearch(unittest.TestCase):
     @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
     def test_cmd_search_formula(self, m_load, m_search, m_stdout):
         cli.cmd_search(SimpleNamespace(
+            verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝湯', 3)],
             penalty=3,
@@ -31,6 +32,7 @@ class TestCmdSearch(unittest.TestCase):
     @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
     def test_cmd_search_formula_nonexist(self, m_load, m_search, m_stdout):
         cli.cmd_search(SimpleNamespace(
+            verbosity=50,
             database='custom_db.yaml',
             items=[('麻黃湯', 3)],
             penalty=3,
@@ -45,6 +47,7 @@ class TestCmdSearch(unittest.TestCase):
     @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
     def test_cmd_search_herbs(self, m_load, m_search, m_stdout):
         cli.cmd_search(SimpleNamespace(
+            verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝', 4), ('白芍', 2)],
             penalty=5,
@@ -61,6 +64,7 @@ class TestCmdSearch(unittest.TestCase):
     @mock.patch.object(cli.searcher, 'load_formula_database', return_value=DATABASE_SAMPLE)
     def test_cmd_search_herbs_nonexist(self, m_load, m_search, m_stdout):
         cli.cmd_search(SimpleNamespace(
+            verbosity=50,
             database='custom_db.yaml',
             items=[('桂枝', 4), ('生薑', 3), ('炙甘草', 2)],
             penalty=5,
@@ -93,3 +97,26 @@ class TestCmdSearch(unittest.TestCase):
             DATABASE_SAMPLE2, {'桂枝': 9, '白芍': 6},
             excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
         )
+
+
+class TestCmdConvert(unittest.TestCase):
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch.object(cli, 'converter')
+    def test_cmd_convert(self, m_converter, m_stdout):
+        m_handler = mock.Mock(**{'load.return_value': {'dummy': 'value'}})
+        m_converter.LicenseFileHandler.return_value = m_handler
+
+        cli.cmd_convert(SimpleNamespace(
+            verbosity=50,
+            file='input.csv',
+            output='output.yaml',
+            vendor=None,
+            unit_dosage=False,
+            config='custom_conf.yaml',
+        ))
+
+        m_converter.log.setLevel.assert_called_once_with(50)
+        m_converter.LicenseFileHandler.assert_called_once_with()
+        m_handler.load_config.assert_called_once_with('custom_conf.yaml')
+        m_handler.load.assert_called_once_with('input.csv', use_unit_dosage=False, filter_vendor=None)
+        m_handler.dump.assert_called_once_with({'dummy': 'value'}, 'output.yaml')

@@ -1,5 +1,7 @@
+import logging
 import os
 import time
+from contextlib import nullcontext
 from itertools import combinations
 
 import yaml
@@ -7,11 +9,44 @@ from scipy.optimize import minimize
 
 DEFAULT_DATAFILE = os.path.normpath(os.path.join(__file__, '..', 'database.yaml'))
 
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
-def load_formula_database(filepath):
-    with open(filepath, 'r', encoding='utf-8') as file:
-        database = yaml.safe_load(file)
-    return database
+
+def load_formula_database(file):
+    try:
+        # file is a path-like object
+        _fh = open(file, 'r', encoding='utf-8')
+    except TypeError:
+        # file is a file-like object
+        _fh = nullcontext(file)
+
+    with _fh as fh:
+        data = yaml.safe_load(fh)
+
+    return _load_formula_database(data)
+
+
+def _load_formula_database(data):
+    rv = {}
+
+    for _item in data:
+        # skip herbs
+        if len(_item['composition']) <= 1:
+            continue
+
+        name = _item['name']
+        key = _item['key']
+        if key in rv:
+            log.warning('%s 使用了重複的索引值 %s，將被忽略', repr(name), repr(key), )
+            continue
+
+        unit_dosage = _item.get('unit_dosage', 1)
+        item = rv[key] = {}
+        for herb, amount in _item['composition'].items():
+            item[herb] = amount / unit_dosage
+
+    return rv
 
 
 def all_combinations(database, target_composition=None, excludes=None):

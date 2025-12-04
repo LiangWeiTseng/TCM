@@ -1,6 +1,7 @@
 import argparse
+import logging
 
-from . import __version__, searcher
+from . import __version__, converter, searcher
 
 
 def search(database, target_composition, **options):
@@ -49,6 +50,7 @@ def search(database, target_composition, **options):
 
 
 def cmd_search(args):
+    searcher.log.setLevel(args.verbosity)
     try:
         database = searcher.load_formula_database(args.database)
     except OSError:
@@ -85,6 +87,14 @@ def cmd_search(args):
            excludes=excludes, penalty_factor=args.penalty, top_n=args.num)
 
 
+def cmd_convert(args):
+    converter.log.setLevel(args.verbosity)
+    handler = converter.LicenseFileHandler()
+    handler.load_config(args.config)
+    data = handler.load(args.file, use_unit_dosage=args.unit_dosage, filter_vendor=args.vendor)
+    handler.dump(data, args.output)
+
+
 def parse_item(value):
     name, sep, dose = value.partition(':')
     return name, float(dose)
@@ -97,6 +107,10 @@ def parse_args(argv=None):
     parser.add_argument(
         '--version', action='version', version=f'{__package__} {__version__}',
         help="""顯示版本資訊並離開""",
+    )
+    parser.add_argument(
+        '-v', '--verbose', dest='verbosity', const=logging.DEBUG, default=logging.INFO, action='store_const',
+        help="""顯示除錯及細節資訊""",
     )
     subparsers = parser.add_subparsers(
         metavar='COMMAND',
@@ -124,6 +138,41 @@ def parse_args(argv=None):
     parser_search.add_argument(
         '-d', '--database', metavar='FILE', default=searcher.DEFAULT_DATAFILE, action='store',
         help="""使用自訂的資料庫檔案 (預設: %(default)s)""",
+    )
+
+    parser_convert = subparsers.add_parser(
+        'convert', aliases=['c'],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        help="""將 CSV 格式的中藥許可證資料檔轉換為 YAML 資料檔""",
+        description="""將 CSV 格式的中藥許可證資料檔轉換為 YAML 資料檔。
+
+中藥許可證資料檔取得方法：
+  1. 前往衛生福利部中醫藥司的中醫藥許可證查詢頁面：
+     https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLQueryForm.aspx
+  2. 在 [查詢類別] 勾選想查詢的項目，一般建議選擇 [效期內]。
+  3. 點選表單中的 [匯出 CSV] 超連結，將匯出的 XLS 檔案儲存至本機。
+  4. 用 Excel 或 LibreOffice 等軟體開啟 XLS 檔案，並轉存為 UTF-8 編碼的 CSV 檔案。""",
+    )
+    parser_convert.set_defaults(func=cmd_convert)
+    parser_convert.add_argument(
+        'file', action='store',
+        help="""要轉換的檔案""",
+    )
+    parser_convert.add_argument(
+        'output', action='store',
+        help="""要輸出的檔案""",
+    )
+    parser_convert.add_argument(
+        '--vendor', metavar='NAME', action='store',
+        help="""篩選特定廠商名稱（正規表示式）""",
+    )
+    parser_convert.add_argument(
+        '--unit-dosage', action='store_true',
+        help="""儲存換算後的每克生藥含量""",
+    )
+    parser_convert.add_argument(
+        '-c', '--config', metavar='FILE', default=converter.DEFAULT_CONFIG_FILE, action='store',
+        help="""使用自訂的配置檔 (預設: %(default)s)""",
     )
 
     return parser.parse_args(argv)
