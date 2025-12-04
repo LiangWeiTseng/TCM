@@ -3,13 +3,6 @@ import argparse
 from . import __version__, searcher
 
 
-def parse_input_item(input_str):
-    for i in range(len(input_str) - 1, -1, -1):
-        if not input_str[i].isdigit() and input_str[i] != '.':
-            return input_str[:i + 1].strip(), float(input_str[i + 1:])
-    return None, None
-
-
 def search(database, target_composition, **options):
     best_matches, elapsed = searcher.find_best_matches(database, target_composition, **options)
     print(f'計算匹配度用時: {elapsed}')
@@ -55,9 +48,6 @@ def cmd_search(args):
 
     print(f'方劑數量:{len(database.keys())}')
 
-    if not args.items:
-        interactive_input(args)
-
     target_composition = {}
     excludes = None
     if len(args.items) > 1:
@@ -88,26 +78,6 @@ def cmd_search(args):
            excludes=excludes, penalty_factor=args.penalty, top_n=args.num)
 
 
-def interactive_input(args):
-    penalty_factor_input = input(f'請輸入懲罰因子（預設為{args.penalty}）：')
-    if penalty_factor_input:
-        try:
-            args.penalty = float(penalty_factor_input)
-        except ValueError:
-            print(f'懲罰因子輸入非法，將使用預設值{args.penalty}')
-
-    user_input = input('請輸入方劑名稱和劑量或藥材組合(例如：補中益氣湯3.5或人參3.0+茯苓2.5)：')
-    args.items = []
-    if '+' in user_input:
-        herbs_input = user_input.split('+')
-        for herb_input in herbs_input:
-            herb, dosage = parse_input_item(herb_input)
-            args.items.append((herb, dosage))
-    else:
-        formula_name, input_dosage = parse_input_item(user_input)
-        args.items.append((formula_name, input_dosage))
-
-
 def parse_item(value):
     name, sep, dose = value.partition(':')
     return name, float(dose)
@@ -121,20 +91,30 @@ def parse_args(argv=None):
         '--version', action='version', version=f'{__package__} {__version__}',
         help="""顯示版本資訊並離開""",
     )
+    subparsers = parser.add_subparsers(
+        metavar='COMMAND',
+        help="""執行子命令，可用如 %(prog)s search -h 取得相關說明""",
+    )
 
-    parser.add_argument(
-        'items', metavar='NAME:DOSE', nargs='*', type=parse_item, action='store',
+    parser_search = subparsers.add_parser(
+        'search', aliases=['s'],
+        help="""搜尋中藥配方的替代組合""",
+        description="""搜尋中藥配方的替代組合。""",
+    )
+    parser_search.set_defaults(func=cmd_search)
+    parser_search.add_argument(
+        'items', metavar='NAME:DOSE', nargs='+', type=parse_item, action='store',
         help="""要搜尋的品項及劑量。可輸入一個複方或多個中藥，例如 '補中益氣湯:3.0' 或 '人參:3.0 茯苓:2.5'""",
     )
-    parser.add_argument(
+    parser_search.add_argument(
         '-p', '--penalty', metavar='FACTOR', default=2.0, type=float, action='store',
         help="""未配對項目的懲罰因子 (預設: %(default)s)""",
     )
-    parser.add_argument(
+    parser_search.add_argument(
         '-n', '--num', metavar='N', default=5, type=int, action='store',
         help="""最佳匹配結果顯示筆數 (預設: %(default)s)""",
     )
-    parser.add_argument(
+    parser_search.add_argument(
         '-d', '--database', metavar='FILE', default=searcher.DEFAULT_DATAFILE, action='store',
         help="""使用自訂的資料庫檔案 (預設: %(default)s)""",
     )
@@ -144,4 +124,9 @@ def parse_args(argv=None):
 
 def main():
     args = parse_args()
-    cmd_search(args)
+
+    if not hasattr(args, 'func'):
+        parse_args(['-h'])
+        return
+
+    args.func(args)
