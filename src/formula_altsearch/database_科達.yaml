@@ -449,6 +449,17 @@
     人參: 5.0
     炙甘草: 5.0
     乾薑: 5.0
+- name: “科達”升麻葛根湯濃縮細粒
+  key: 升麻葛根湯
+  vendor: 科達製藥股份有限公司
+  url: https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLResultDetail.aspx?LICEWORDID=01&LICENUM=031460
+  unit_dosage: 9.0
+  composition:
+    葛根: 6.0
+    升麻: 9.0
+    白芍: 6.0
+    甘草: 3.0
+    生薑: 3.0
 - name: “科達”六君子湯濃縮細粒
   key: 六君子湯
   vendor: 科達製藥股份有限公司
@@ -1470,6 +1481,25 @@
     鹿角: 10.0
     枸杞子: 1.1
     人參: 0.9
+- name: “科達”瓜蔞枳實湯濃縮細粒
+  key: 瓜蔞枳實湯
+  vendor: 科達製藥股份有限公司
+  url: https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLResultDetail.aspx?LICEWORDID=01&LICENUM=035342
+  unit_dosage: 12.0
+  composition:
+    栝蔞實: 3.0
+    枳實: 3.0
+    桔梗: 3.0
+    茯苓: 3.0
+    貝母: 3.0
+    陳皮: 3.0
+    黃芩: 3.0
+    山梔子: 3.0
+    當歸: 2.0
+    砂仁: 1.5
+    木香: 1.5
+    甘草: 1.0
+    生薑: 3.0
 - name: “科達”身痛逐瘀湯濃縮細粒
   key: 身痛逐瘀湯
   vendor: 科達製藥股份有限公司
@@ -5425,7 +5455,7 @@
   composition:
     當歸: 6.0
     蒲黃: 6.0
-    赤芍(16.3): 4.0
+    赤芍: 4.0
     延胡索: 2.0
     川芎: 2.0
     沒藥: 2.0
@@ -5812,6 +5842,25 @@
     生薑: 5.0
     枳實: 2.0
     大棗: 2.0
+- name: “科達”消風散濃縮細粒
+  key: 消風散
+  vendor: 科達製藥股份有限公司
+  url: https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLResultDetail.aspx?LICEWORDID=01&LICENUM=060661
+  unit_dosage: 12.0
+  composition:
+    當歸: 2.5
+    生地黃: 2.5
+    防風: 2.5
+    蟬蛻: 2.5
+    知母: 2.5
+    苦參: 2.5
+    胡麻: 2.5
+    荊芥: 2.5
+    蒼朮: 2.5
+    牛蒡子: 2.5
+    石膏: 2.5
+    甘草: 1.25
+    木通: 1.25
 - name: “科達”定喘湯濃縮細粒
   key: 定喘湯
   vendor: 科達製藥股份有限公司

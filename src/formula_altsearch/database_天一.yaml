@@ -743,6 +743,18 @@
     枳殼: 3.0
     生薑: 3.0
     薄荷: 0.5
+- name: “天一”乙字湯濃縮顆粒
+  key: 乙字湯
+  vendor: 天一藥廠股份有限公司
+  url: https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLResultDetail.aspx?LICEWORDID=01&LICENUM=031160
+  unit_dosage: 6.0
+  composition:
+    當歸: 6.0
+    黃芩: 3.0
+    升麻: 2.0
+    柴胡: 6.0
+    甘草: 3.0
+    大黃: 1.5
 - name: “天一”八味地黃丸濃縮顆粒
   key: 八味地黃丸
   vendor: 天一藥廠股份有限公司

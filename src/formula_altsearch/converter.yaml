@@ -162,3 +162,50 @@ key_remapper:
   杏蘇飲（幼科）: 幼科杏蘇飲
   溫賦湯（真武湯）: 真武湯
   灸甘草: 炙甘草
+
+patch:
+  衛署藥製字第031160號:
+    - action: replace
+      field: 處方成分
+      pattern: 每包(6g)中含有
+      repl: 每6g中含有
+  衛署藥製字第031460號:
+    - action: replace
+      field: 處方成分
+      pattern: 羥丙基甲基纖維素 (0.09 )
+      repl: 羥丙基甲基纖維素 (0.09 g)
+  衛署藥製字第035342號:
+    - action: replace
+      field: 處方成分
+      pattern: 澱粉 (5.88 )
+      repl: 澱粉 (5.88 g)
+  衛署藥製字第045432號:
+    - action: replace
+      field: 處方成分
+      pattern: 細辛 (0.6 KG)
+      repl: 細辛 (0.6 g)
+  衛署藥製字第045566號:
+    - action: replace
+      field: 處方成分
+      pattern: 澱粉 (4..2 g)
+      repl: 澱粉 (4.2 g)
+  衛署藥製字第045812號:
+    - action: replace
+      field: 藥品名稱
+      pattern: ”順天堂“
+      repl: “順天堂”
+  衛部藥製字第058684號:
+    - action: replace
+      field: 處方成分
+      pattern: 葛根 (1.9 )
+      repl: 葛根 (1.9 g)
+  衛部藥製字第059467號:
+    - action: replace
+      field: 處方成分
+      pattern: 赤芍(16.3) (4.00 g)
+      repl: 赤芍(16.3%) (4.00 g)
+  衛部藥製字第060661號:
+    - action: replace
+      field: 處方成分
+      pattern: 羧甲基纖維素鈉 (0.12g g)
+      repl: 羧甲基纖維素鈉 (0.12g)

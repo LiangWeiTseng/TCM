@@ -33,7 +33,7 @@ class LicenseFileHandler:
         self._load_config(data)
 
     def _load_config(self, data):
-        for key in ('herb_remapper', 'key_remapper'):
+        for key in ('herb_remapper', 'key_remapper', 'patch'):
             try:
                 setattr(self, key, data[key])
             except KeyError:
@@ -57,6 +57,8 @@ class LicenseFileHandler:
             log.debug('處理品項: %s', repr(row['藥品名稱']))
 
             try:
+                self._apply_patch(row)
+
                 type_ = row.get('劑型與類別')
                 if type_ is not None and not re.match(r'濃縮顆粒劑', type_):
                     continue
@@ -67,7 +69,7 @@ class LicenseFileHandler:
                     continue
 
                 name = self.retrieve_item_name(row['藥品名稱'])
-                key = self.retrieve_item_key(row['藥品名稱'])
+                key = row.get('_key', self.retrieve_item_key(row['藥品名稱']))
                 url = self.retrieve_url(row['許可證字號'])
                 composition, unit_dosage = self.retrieve_composition(row['處方成分'])
 
@@ -192,6 +194,43 @@ class LicenseFileHandler:
 
         return self.herb_remapper.get(name, name)
 
+    def _apply_patch(self, row):
+        id_ = row['許可證字號']
+        name = row.get('藥品名稱')
+        try:
+            patches = self.patch[id_]
+        except KeyError:
+            return
+
+        log.debug('套用補綴: %s (%s)', repr(id_), repr(name))
+        for patch in patches:
+            try:
+                self._apply_patch_row(row, patch)
+            except Exception as exc:
+                log.error('無法套用補綴 %s: %s', patch, exc)
+
+    def _apply_patch_row(self, row, patch):
+        action = patch['action']
+
+        if action == 'replace':
+            field = patch['field']
+            pattern = patch['pattern']
+            repl = patch['repl']
+            count = patch.get('count')
+            opts = {k: v for k, v in (
+                ('count', count),
+            ) if v is not None}
+            row[field] = row[field].replace(pattern, repl, **opts)
+        elif action == 'replace_re':
+            field = patch['field']
+            pattern = patch['pattern']
+            repl = patch['repl']
+            count = patch.get('count', 0)
+            flags = patch.get('flags', re.M)
+            row[field] = re.sub(pattern, repl, row[field], count=count, flags=flags)
+        elif action == 'set_key':
+            row['_key'] = patch['value']
+
     herb_remapper = {
         '': None,
         '乳糖': None,
@@ -204,3 +243,5 @@ class LicenseFileHandler:
     }
 
     key_remapper = {}
+
+    patch = {}

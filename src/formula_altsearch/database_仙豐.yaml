@@ -1165,6 +1165,26 @@
     茶葉: 1.2
     黃芩: 4.0
     黃連: 4.0
+- name: ”仙豐”清上蠲痛湯濃縮細粒
+  key: 清上蠲痛湯
+  vendor: 仙豐股份有限公司
+  url: https://service.mohw.gov.tw/DOCMAP/CusSite/TCMLResultDetail.aspx?LICEWORDID=01&LICENUM=045432
+  unit_dosage: 9.0
+  composition:
+    川芎: 2.0
+    甘草: 0.6
+    生薑: 3.0
+    白芷: 2.0
+    防風: 2.0
+    羌活: 2.0
+    細辛: 0.6
+    麥門冬: 2.0
+    菊花: 1.0
+    黃芩: 3.0
+    當歸: 2.0
+    蒼朮: 2.0
+    蔓荊子: 1.0
+    獨活: 2.0
 - name: ”仙豐”膈下逐瘀湯濃縮細粒
   key: 膈下逐瘀湯
   vendor: 仙豐股份有限公司
