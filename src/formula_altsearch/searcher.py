@@ -68,6 +68,11 @@ class FormulaSearcher(ABC):
         pass
 
     @cached_property
+    def variance(self):
+        self.__dict__['variance'] = self.calculate_variance(self.target_composition)
+        return self.__dict__['variance']
+
+    @cached_property
     def cformulas(self):
         self._compute_related_formulas()
         return self.__dict__['cformulas']
@@ -99,6 +104,9 @@ class FormulaSearcher(ABC):
                 combined_composition[herb] = combined_composition.get(herb, 0) + amount * dosage
         return combined_composition
 
+    def calculate_variance(self, composition):
+        return sum(amount**2 for amount in composition.values()) ** 0.5
+
     def calculate_delta(self, x, combination):
         combined_composition = self.get_combined_composition(combination, x)
 
@@ -107,10 +115,11 @@ class FormulaSearcher(ABC):
             combined_amount = combined_composition.get(herb, 0)
             delta += (target_amount - combined_amount) ** 2
 
-        non_target_herbs_count = len(set(combined_composition.keys()) - set(self.target_composition.keys()))
-        delta += self.penalty_factor * non_target_herbs_count
+        for herb, amount in combined_composition.items():
+            if herb not in self.target_composition:
+                delta += (amount * self.penalty_factor) ** 2
 
-        return delta
+        return delta ** 0.5
 
     def calculate_match(self, combination):
         initial_guess = [1 for _ in combination]
@@ -122,7 +131,12 @@ class FormulaSearcher(ABC):
 
         dosages = result.x
         delta = result.fun
-        match_percentage = 100 - delta
+
+        if self.variance == 0:
+            match_percentage = 100
+        else:
+            match_percentage = 100 * (1 - delta / self.variance)
+
         return dosages, delta, match_percentage
 
 
