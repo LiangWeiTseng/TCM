@@ -99,7 +99,8 @@ def cmd_search(args):
             return
 
     search(database, target_composition,
-           excludes=excludes, penalty_factor=args.penalty, top_n=args.num)
+           excludes=excludes, max_cformulas=args.max_cformulas, max_sformulas=args.max_sformulas,
+           penalty_factor=args.penalty, top_n=args.num)
 
 
 def cmd_convert(args):
@@ -145,6 +146,14 @@ def parse_args(argv=None):
     parser_search.add_argument(
         '-r', '--raw', default=False, action='store_true',
         help="""搜尋生藥劑量，加入此參數時每個 NAME:DOSE 代表配方中的生藥及劑量""",
+    )
+    parser_search.add_argument(
+        '--mc', '--max-cformulas', dest='max_cformulas', metavar='N', default=2, type=int, action='store',
+        help="""最大科中複方數 (預設: %(default)s)""",
+    )
+    parser_search.add_argument(
+        '--ms', '--max-sformulas', dest='max_sformulas', metavar='N', default=0, type=int, action='store',
+        help="""最大科中單方數 (預設: %(default)s)""",
     )
     parser_search.add_argument(
         '-p', '--penalty', metavar='FACTOR', default=2.0, type=float, action='store',

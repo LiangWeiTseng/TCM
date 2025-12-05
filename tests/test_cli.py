@@ -19,13 +19,15 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('桂枝湯', 3)],
             raw=False,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=3,
             num=6,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
             m_load.return_value, {'桂枝': 9, '白芍': 6},
-            excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
+            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -37,6 +39,8 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('麻黃湯', 3)],
             raw=False,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=3,
             num=6,
         ))
@@ -53,13 +57,15 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('桂枝湯', 3), ('桂枝', 1)],
             raw=False,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=3,
             num=6,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
             m_load.return_value, {'桂枝': 13, '白芍': 6},
-            excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
+            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -71,6 +77,8 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('桂枝湯', 3), ('白芍', 1), ('生薑', 1)],
             raw=False,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=3,
             num=6,
         ))
@@ -87,13 +95,15 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('桂枝', 4), ('白芍', 2)],
             raw=True,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=5,
             num=10,
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
             m_load.return_value, {'桂枝': 4, '白芍': 2},
-            excludes=set(), penalty_factor=5, top_n=10,
+            excludes=set(), max_cformulas=2, max_sformulas=3, penalty_factor=5, top_n=10,
         )
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -105,6 +115,8 @@ class TestCmdSearch(unittest.TestCase):
             database='custom_db.yaml',
             items=[('桂枝', 4), ('生薑', 3), ('炙甘草', 2)],
             raw=True,
+            max_cformulas=2,
+            max_sformulas=3,
             penalty=5,
             num=10,
         ))
@@ -117,11 +129,11 @@ class TestCmdSearch(unittest.TestCase):
     def test_search_herbs(self, m_find, m_stdout):
         cli.search(
             DATABASE_SAMPLE, {'桂枝': 9, '白芍': 6},
-            excludes=None, penalty_factor=3, top_n=6,
+            excludes=None, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
         m_find.assert_called_once_with(
             DATABASE_SAMPLE, {'桂枝': 9, '白芍': 6},
-            excludes=None, penalty_factor=3, top_n=6,
+            excludes=None, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -129,11 +141,11 @@ class TestCmdSearch(unittest.TestCase):
     def test_search_formula(self, m_find, m_stdout):
         cli.search(
             DATABASE_SAMPLE2, {'桂枝': 9, '白芍': 6},
-            excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
+            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
         m_find.assert_called_once_with(
             DATABASE_SAMPLE2, {'桂枝': 9, '白芍': 6},
-            excludes={'桂枝湯'}, penalty_factor=3, top_n=6,
+            excludes={'桂枝湯'}, max_cformulas=2, max_sformulas=3, penalty_factor=3, top_n=6,
         )
 
 
