@@ -284,8 +284,8 @@ class TestFormulaSearcher(unittest.TestCase):
 
         match_percentage, combination, dosages = best_matches[1]
         self.assertAlmostEqual(match_percentage, 99.99997698778694)
-        self.assertEqual(combination, ('桂枝湯', '桂枝去芍藥湯'))
-        numpy.testing.assert_allclose(dosages, [2, 0], atol=1e-4)
+        self.assertEqual(combination, ('桂枝湯',))
+        numpy.testing.assert_allclose(dosages, [2], atol=1e-4)
 
         match_percentage, combination, dosages = best_matches[2]
         self.assertAlmostEqual(match_percentage, 50.84608476251202)

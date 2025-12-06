@@ -163,6 +163,16 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
                 log.debug('無法計算 %s 的最佳劑量: %s', combo, exc)
                 continue
             log.debug('估值 %s %s: %.3f (%.2f%%)', combo, np.round(dosages, 3), delta, match_percentage)
+
+            # remove formulas with 0 dosage
+            dosages = np.round(dosages, 1)
+            try:
+                combo, dosages = zip(*((f, d) for f, d in zip(combo, dosages) if d != 0))
+                log.debug('校正: %s %s', combo, np.round(dosages, 1))
+            except ValueError:
+                # zip raises when all 0
+                continue
+
             yield match_percentage, combo, dosages
 
     def generate_combinations(self):
