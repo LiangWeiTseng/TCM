@@ -71,7 +71,7 @@ def cmd_search(args):
         all_herbs |= data.keys()
 
     target_composition = {}
-    excludes = set()
+    excludes = set(args.excludes)
 
     if args.raw:
         unknowns = {}
@@ -146,6 +146,11 @@ def parse_args(argv=None):
     parser_search.add_argument(
         '-r', '--raw', default=False, action='store_true',
         help="""搜尋生藥劑量，加入此參數時每個 NAME:DOSE 代表配方中的生藥及劑量""",
+    )
+    parser_search.add_argument(
+        '-e', '--exclude', dest='excludes', metavar='NAME', default=[], action='append',
+        help="""要排除的科學中藥品項，使之不受評估與輸出。可多次指定此參數，例如
+'-e 桂枝去芍藥湯 -e 芍藥甘草湯'。NAME:DOSE 輸入的科學中藥複方會自動排除，不必額外加入。""",
     )
     parser_search.add_argument(
         '--mc', '--max-cformulas', dest='max_cformulas', metavar='N', default=2, type=int, action='store',

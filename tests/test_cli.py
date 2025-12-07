@@ -23,6 +23,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=3,
             num=6,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
@@ -43,6 +44,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=3,
             num=6,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_not_called()
@@ -61,6 +63,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=3,
             num=6,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
@@ -81,6 +84,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=3,
             num=6,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_not_called()
@@ -99,6 +103,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=5,
             num=10,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_called_once_with(
@@ -119,6 +124,7 @@ class TestCmdSearch(unittest.TestCase):
             max_sformulas=3,
             penalty=5,
             num=10,
+            excludes=[],
         ))
         m_load.assert_called_once_with('custom_db.yaml')
         m_search.assert_not_called()
