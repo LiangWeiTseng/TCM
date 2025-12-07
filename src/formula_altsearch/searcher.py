@@ -1,3 +1,4 @@
+import heapq
 import logging
 import os
 from contextlib import nullcontext
@@ -93,16 +94,17 @@ def calculate_match(target_composition, combination, database, penalty_factor):
     return dosages, delta, match_percentage
 
 
-def find_best_matches(database, target_composition, top_n=5,
-                      excludes=undefined, penalty_factor=undefined):
+def _find_best_matches(database, target_composition,
+                       excludes=undefined, penalty_factor=undefined):
     all_possible_combinations = all_combinations(database, target_composition, excludes)
 
-    matches = []
     for combo in all_possible_combinations:
         dosages, delta, match_percentage = calculate_match(target_composition, combo, database, penalty_factor)
         log.debug('估值 %s %s: %.3f (%.2f%%)', combo, np.round(dosages, 3), delta, match_percentage)
-        matches.append((match_percentage, combo, dosages))
+        yield match_percentage, combo, dosages
 
-    matches.sort(key=lambda x: -x[0])
 
-    return matches[:top_n]
+def find_best_matches(database, target_composition, top_n=5, *args, **kwargs):
+    gen = _find_best_matches(database, target_composition, *args, **kwargs)
+    matches = heapq.nlargest(top_n, gen, key=lambda x: x[0])
+    return matches
