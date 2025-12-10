@@ -2,7 +2,36 @@ import argparse
 import logging
 import time
 
+from wcwidth import wcwidth
+
 from . import __version__, converter, searcher
+
+
+class CJKRawDescriptionHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    def _split_lines(self, text, width):
+        lines = []
+        buf = ''
+        cur_width = 0
+
+        for ch in text:
+            w = wcwidth(ch)
+            if w < 0:
+                w = 1
+            if ch == '\n':
+                lines.append(buf)
+                buf = ''
+                cur_width = 0
+                continue
+            if cur_width + w > width:
+                lines.append(buf)
+                buf = ch
+                cur_width = w
+            else:
+                buf += ch
+                cur_width += w
+        if buf:
+            lines.append(buf)
+        return lines
 
 
 def search(database, target_composition, **options):
@@ -142,6 +171,7 @@ def parse_item(value):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="""搜尋中藥配方的替代組合。""",
+        formatter_class=CJKRawDescriptionHelpFormatter,
     )
     parser.add_argument(
         '--version', action='version', version=f'{__package__} {__version__}',
@@ -158,6 +188,7 @@ def parse_args(argv=None):
 
     parser_search = subparsers.add_parser(
         'search', aliases=['s'],
+        formatter_class=CJKRawDescriptionHelpFormatter,
         help="""搜尋中藥配方的替代組合""",
         description="""搜尋中藥配方的替代組合。""",
     )
@@ -172,7 +203,7 @@ def parse_args(argv=None):
     )
     parser_search.add_argument(
         '-e', '--exclude', dest='excludes', metavar='NAME', default=[], action='append',
-        help="""要排除的科學中藥品項，使之不受評估與輸出。可多次指定此參數，例如
+        help="""要排除的科學中藥品項，使之不受評估與輸出。可多次指定此參數，例如 \
 '-e 桂枝去芍藥湯 -e 芍藥甘草湯'。NAME:DOSE 輸入的科學中藥複方會自動排除，不必額外加入。""",
     )
     parser_search.add_argument(
@@ -185,11 +216,11 @@ def parse_args(argv=None):
     )
     parser_search.add_argument(
         '-p', '--penalty', metavar='FACTOR', default=2.0, type=float, action='store',
-        help="""未配對項目的懲罰因子 (預設: %(default)s)""",
+        help="""非目標藥材的懲罰倍率 (預設: %(default)s)""",
     )
     parser_search.add_argument(
         '-n', '--num', metavar='N', default=5, type=int, action='store',
-        help="""最佳匹配結果顯示筆數 (預設: %(default)s)""",
+        help="""最佳匹配結果輸出筆數 (預設: %(default)s)""",
     )
     parser_search.add_argument(
         '-d', '--database', metavar='FILE', default=searcher.DEFAULT_DATAFILE, action='store',
@@ -222,7 +253,7 @@ def parse_args(argv=None):
 
     parser_convert = subparsers.add_parser(
         'convert', aliases=['c'],
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=CJKRawDescriptionHelpFormatter,
         help="""將 CSV 格式的中藥許可證資料檔轉換為 YAML 資料檔""",
         description="""將 CSV 格式的中藥許可證資料檔轉換為 YAML 資料檔。
 
