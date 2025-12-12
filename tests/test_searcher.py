@@ -95,18 +95,82 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝': {'桂枝': 1}, '白芍': {'白芍': 1}, '生薑': {'生薑': 0.8}, '炙甘草': {'炙甘草': 0.8},
         }
 
-    def test_compute_related_formulas(self):
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
+    @staticmethod
+    def _test_context_db():
+        return {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+            '乙複方': {'丙藥': 1.0, '丁藥': 1.0},
+            '甲單方': {'甲藥': 1.0},
+            '乙單方': {'乙藥': 1.0},
+            '丙單方': {'丙藥': 1.0},
+            '丁單方': {'丁藥': 1.0},
+        }
 
-        # filter by target_composition
-        searcher._set_context({'白芍': 1.0, '杏仁': 1.0})
-        self.assertEqual(list(searcher.cformulas), ['桂枝湯', '麻黃湯'])
-        self.assertEqual(list(searcher.sformulas), ['白芍'])
+    def test_context_formula_mapping_basic(self):
+        """cformulas/sformulas should contain only compound/simple formulas"""
+        database = self._test_context_db()
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context({'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0})
+        self.assertEqual(set(searcher.cformulas), {'甲複方', '乙複方'})
+        self.assertEqual(set(searcher.sformulas), {'甲單方', '乙單方', '丙單方', '丁單方'})
 
-        # filter by excludes
-        searcher._set_context({'桂枝': 1.0, '白芍': 1.0, '生薑': 0.8}, excludes={'白芍', '桂枝去芍藥湯'})
-        self.assertEqual(list(searcher.cformulas), ['桂枝湯', '麻黃湯'])
-        self.assertEqual(list(searcher.sformulas), ['桂枝', '生薑'])
+    def test_context_formula_mapping_filter_by_target(self):
+        """Formulas containing no herbs in target should not present"""
+        database = self._test_context_db()
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context({'甲藥': 1.0, '乙藥': 1.0})
+        self.assertEqual(set(searcher.cformulas), {'甲複方'})
+        self.assertEqual(set(searcher.sformulas), {'甲單方', '乙單方'})
+
+    def test_context_formula_mapping_filter_by_zero_target(self):
+        """Formulas containing only herbs in target with zero dose should not present"""
+        database = self._test_context_db()
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context({'甲藥': 1.0, '乙藥': 1.0, '丙藥': 0.0, '丁藥': 0.0})
+        self.assertEqual(set(searcher.cformulas), {'甲複方'})
+        self.assertEqual(set(searcher.sformulas), {'甲單方', '乙單方'})
+
+    def test_context_formula_mapping_herb_to_sformula(self):
+        """Herbs should be mapped to all related sformulas"""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0},
+            '甲單方': {'甲藥': 1.0},
+            '乙單方': {'乙藥': 1.0},
+            '丙單方': {'乙藥': 1.0},
+            '丁單方': {'丁藥': 1.0},
+        }
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+
+        # - herbs with one related sformula should present (甲藥)
+        # - herbs with multiple related sformulas should present (乙藥)
+        # - herbs with no related sformula should not present (丙藥)
+        # - herbs not in the target composition should not present (丁藥)
+        searcher._set_context({'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0})
+        self.assertEqual(searcher.herb_sformulas, {
+            '甲藥': ['甲單方'],
+            '乙藥': ['乙單方', '丙單方'],
+        })
+
+    def test_context_formula_excludes(self):
+        """Formulas listed in `excludes` not appear in any map"""
+        database = self._test_context_db()
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+
+        searcher._set_context(
+            {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0},
+            excludes={'乙複方', '丙單方', '丁單方'},
+        )
+        self.assertEqual(set(searcher.cformulas), {'甲複方'})
+        self.assertEqual(set(searcher.sformulas), {'甲單方', '乙單方'})
+        self.assertEqual(searcher.herb_sformulas, {'甲藥': ['甲單方'], '乙藥': ['乙單方']})
+
+        searcher._set_context(
+            {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0},
+            excludes={'甲複方', '乙複方', '甲單方', '乙單方', '丙單方', '丁單方'},
+        )
+        self.assertEqual(set(searcher.cformulas), set())
+        self.assertEqual(set(searcher.sformulas), set())
+        self.assertEqual(searcher.herb_sformulas, {})
 
     def test_generate_combinations(self):
         target_composition = {
@@ -231,9 +295,7 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
             '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
             '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
         }
-        target_composition = {
-            '桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
-        }
+        target_composition = {'桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8}
 
         searcher = _searcher.ExhaustiveFormulaSearcher(database)
         searcher._set_context(target_composition, penalty_factor=2.0)
@@ -243,18 +305,13 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
 
     def test_calculate_delta_with_penalty(self):
         database = {
-            '桂枝湯': {'桂枝': 0.6, '白芍': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
-            '桂枝去芍藥湯': {'桂枝': 0.6, '生薑': 0.6, '大棗': 0.5, '炙甘草': 0.4},
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
         }
-        target_composition = {
-            '桂枝': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8,
-        }
+        target_composition = {'甲藥': 1.0}
 
         searcher = _searcher.ExhaustiveFormulaSearcher(database)
-        searcher._set_context(target_composition, penalty_factor=2.0)
-        self.assertEqual(searcher.calculate_delta([1, 1], ['桂枝湯', '桂枝去芍藥湯']), 1.2)
-        self.assertEqual(searcher.calculate_delta([2, 0], ['桂枝湯', '桂枝去芍藥湯']), 2.4)
-        self.assertEqual(searcher.calculate_delta([0, 2], ['桂枝湯', '桂枝去芍藥湯']), 0)
+        searcher._set_context(target_composition, penalty_factor=4.0)
+        self.assertEqual(searcher.calculate_delta([1], ('甲複方',)), 4.0)
 
     def test_find_best_dosages(self):
         database = {
@@ -283,41 +340,132 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         np.testing.assert_allclose(dosages, [1.997, 0.000], atol=1e-3)
         self.assertAlmostEqual(delta, 1, places=3)
 
-    def test_calculate_match_ratio(self):
-        # calculate using variance when provided
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
-        searcher._set_context({})
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.0, 1.0), 1.0)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.1, 1.0), 0.9)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.5, 1.0), 0.5)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(1.0, 1.0), 0.0)
+    def test_calculate_match_perfect_fit(self):
+        """Should result in nearly 0 delta and 100% match_pct when combo can fit target perfectly."""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+        }
+        target_composition = {'甲藥': 2.0, '乙藥': 2.0}
+        combo = ('甲複方',)
 
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.0, 0.5), 1.0)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.1, 0.5), 0.8)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.5, 0.5), 0.0)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(1.0, 0.5), -1.0)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        dosages, delta, match_pct = searcher.calculate_match(combo)
 
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.0, 0), 1)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.1, 0), 1)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.5, 0), 1)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(1.0, 0), 1)
+        np.testing.assert_allclose(dosages, [2.0], atol=1e-1)
+        self.assertAlmostEqual(delta, 0.0, places=3)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
 
-        # calculate using self.variance when not provided
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
-        searcher._set_context({'桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8})
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.0), 1.0)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.01), 0.9959038403974048)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.1), 0.9590384039740479)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.5), 0.7951920198702399)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(1.0), 0.5903840397404798)
+    def test_calculate_match_approximate_fit(self):
+        """Should result in minimal delta and maximal match_pct."""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+        }
+        target_composition = {'甲藥': 2.0, '乙藥': 3.0}
+        combo = ('甲複方',)
 
-        searcher = _searcher.ExhaustiveFormulaSearcher(self.database)
-        searcher._set_context({'桂枝': 1.2, '白芍': 1.2, '生薑': 1.2, '大棗': 1.0, '炙甘草': 0.8, '杏仁': 1.0})
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.0), 1.0)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.01), 0.9962095097821054)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.1), 0.9620950978210548)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(0.5), 0.8104754891052741)
-        self.assertAlmostEqual(searcher.calculate_match_ratio(1.0), 0.6209509782105482)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        dosages, delta, match_pct = searcher.calculate_match(combo)
+
+        # expected delta = sqrt((2.5-2.0)^2 + (2.5-3.0)^2) = sqrt(0.5)
+        # expected variance = sqrt(2.0^2 + 3.0^2) = sqrt(13.0)
+        # expected match_ratio = 1 - sqrt(0.5)/sqrt(13.0)
+        np.testing.assert_allclose(dosages, [2.5], atol=1e-1)
+        self.assertAlmostEqual(delta, 0.707, places=3)
+        self.assertAlmostEqual(match_pct, 80.39, places=2)
+
+    def test_calculate_match_redundant_formulas(self):
+        database = {
+            '甲複方': {'甲藥': 1.0},
+            '乙複方': {'甲藥': 1.0},
+        }
+        target_composition = {'甲藥': 5.0}
+        combo = ('甲複方', '乙複方')
+
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        dosages, delta, match_pct = searcher.calculate_match(combo)
+
+        self.assertAlmostEqual(dosages[0] + dosages[1], 5.0, places=1)
+        self.assertAlmostEqual(delta, 0.0, places=3)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
+
+    def test_calculate_match_zero_combo(self):
+        """Should result in 0 delta and 100% match_pct when combo is empty."""
+        database = {
+            '甲複方': {'甲藥': 1.0},
+        }
+        target_composition = {'甲藥': 5.0}
+        combo = ()
+
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        dosages, delta, match_pct = searcher.calculate_match(combo)
+
+        self.assertEqual(dosages, ())
+        self.assertAlmostEqual(delta, 0.0, places=3)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
+
+    def test_evaluate_combination_basic(self):
+        """Should return values as underlying `calculate_match` does."""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+        }
+        target_composition = {'甲藥': 2.0, '乙藥': 2.0}
+        combo = ('甲複方',)
+
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        new_combo, new_dosages, match_pct = searcher.evaluate_combination(combo)
+
+        self.assertEqual(new_combo, ('甲複方',))
+        np.testing.assert_allclose(new_dosages, [2.0], atol=1e-1)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
+
+    def test_evaluate_combination_round(self):
+        """Should round returned dosages to the specified places."""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+        }
+        target_composition = {'甲藥': 0.06, '乙藥': 0.06}
+        combo = ('甲複方',)
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+
+        searcher._set_context(target_composition, places=2)
+        new_combo, new_dosages, match_pct = searcher.evaluate_combination(combo)
+
+        self.assertEqual(new_combo, ('甲複方',))
+        np.testing.assert_allclose(new_dosages, [0.06], atol=1e-2)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
+
+        searcher._set_context(target_composition, places=1)
+        new_combo, new_dosages, match_pct = searcher.evaluate_combination(combo)
+
+        # @TODO: match_pct is actually calculated using the original dosages
+        # (i.e. 0.06 in this case)
+        self.assertEqual(new_combo, ('甲複方',))
+        np.testing.assert_allclose(new_dosages, [0.1], atol=1e-1)
+        self.assertAlmostEqual(match_pct, 98.35, places=2)
+
+    def test_evaluate_combination_fix_zero(self):
+        """Should strip zero-dose formulas from the returned combo and dosages."""
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+            '乙複方': {'乙藥': 1.0, '丙藥': 1.0},
+            '丙複方': {'丙藥': 1.0, '丁藥': 1.0},
+        }
+        target_composition = {'甲藥': 2.0, '乙藥': 2.0, '丙藥': 2.0, '丁藥': 2.0}
+        combo = ('甲複方', '乙複方', '丙複方')
+
+        searcher = _searcher.ExhaustiveFormulaSearcher(database)
+        searcher._set_context(target_composition, places=3)
+        new_combo, new_dosages, match_pct = searcher.evaluate_combination(combo)
+
+        # fix from ('甲複方', '乙複方', '丙複方'), [2.0, 0.0, 2.0]
+        self.assertEqual(new_combo, ('甲複方', '丙複方'))
+        np.testing.assert_allclose(new_dosages, [2.0, 2.0], atol=1e-1)
+        self.assertAlmostEqual(match_pct, 100.0, places=2)
 
     def test_find_best_matches(self):
         database = {
@@ -353,3 +501,505 @@ class TestExhaustiveFormulaSearcher(unittest.TestCase):
         self.assertAlmostEqual(match_pct, 50.84596674545061, places=3)
         self.assertEqual(combo, ('桂枝去芍藥湯',))
         np.testing.assert_allclose(dosages, [2], atol=1e-3)
+
+
+class TestBeamFormulaSearcher(unittest.TestCase):
+    @staticmethod
+    def _sample_data():
+        database = {
+            '甲複方': {'甲藥': 1.0, '甲無關藥': 1.0},
+            '乙複方': {'乙藥': 1.0, '乙無關藥': 1.0},
+            '丙複方': {'丙藥': 1.0, '丙無關藥': 1.0},
+            '丁複方': {'丁藥': 1.0, '丁無關藥': 1.0},
+        }
+        target_composition = {'甲藥': 1.0, '乙藥': 2.0, '丙藥': 3.0, '丁藥': 4.0}
+        return database, target_composition
+
+    @staticmethod
+    def _se_eval(combo, *args, **kwargs):
+        return combo, (1.0,) * len(combo), 100.0
+
+    @staticmethod
+    def _se_heur(_combo, _dosages, _pool_size, gen):
+        return gen
+
+    def test_generate_combinations_max_depth(self):
+        """Should generate items through `generate_unique_combinations_at_depth` depth by depth."""
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+
+        # depth 0
+        searcher._set_context(target_composition, max_cformulas=0, top_n=1,
+                              beam_width_factor=1000, beam_multiplier=1)
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
+                               wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
+            combos = list(searcher.generate_combinations())
+            self.assertEqual(combos, [()])
+            self.assertListEqual(m_gen.call_args_list, [])
+
+        # depth 1
+        searcher._set_context(target_composition, max_cformulas=1, top_n=1,
+                              beam_width_factor=1000, beam_multiplier=1)
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
+                               wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
+            combos = list(searcher.generate_combinations())
+            self.assertEqual(combos, [
+                (),
+                ('甲複方',),
+                ('乙複方',),
+                ('丙複方',),
+                ('丁複方',),
+            ])
+            self.assertListEqual(m_gen.call_args_list, [
+                mock.call(0, [
+                    (0, 100.0, (), ()),
+                ]),
+            ])
+
+        m_gen.assert_called_with(0, [(0, 100.0, (), ())])
+
+        # depth 2
+        searcher._set_context(target_composition, max_cformulas=2, top_n=1,
+                              beam_width_factor=1000, beam_multiplier=1)
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
+                               wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
+            combos = list(searcher.generate_combinations())
+            self.assertEqual(combos, [
+                (),
+                ('甲複方',),
+                ('甲複方', '乙複方'),
+                ('甲複方', '丙複方'),
+                ('甲複方', '丁複方'),
+                ('乙複方',),
+                ('乙複方', '丙複方'),
+                ('乙複方', '丁複方'),
+                ('丙複方',),
+                ('丙複方', '丁複方'),
+                ('丁複方',),
+            ])
+            self.assertListEqual(m_gen.call_args_list, [
+                mock.call(0, [
+                    (0, 100.0, (), ()),
+                ]),
+                mock.call(1, [
+                    (0, 100.0, (), ()),
+                    (1, 100.0, ('甲複方',), (1.0,)),
+                    (1, 100.0, ('乙複方',), (1.0,)),
+                    (1, 100.0, ('丙複方',), (1.0,)),
+                    (1, 100.0, ('丁複方',), (1.0,)),
+                ]),
+            ])
+
+        # depth 3
+        searcher._set_context(target_composition, max_cformulas=3, top_n=1,
+                              beam_width_factor=1000, beam_multiplier=1)
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
+                               wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
+            combos = list(searcher.generate_combinations())
+            self.assertEqual(combos, [
+                (),
+                ('甲複方',),
+                ('甲複方', '乙複方'),
+                ('甲複方', '乙複方', '丙複方'),
+                ('甲複方', '乙複方', '丁複方'),
+                ('甲複方', '丙複方'),
+                ('甲複方', '丙複方', '丁複方'),
+                ('甲複方', '丁複方'),
+                ('乙複方',),
+                ('乙複方', '丙複方'),
+                ('乙複方', '丙複方', '丁複方'),
+                ('乙複方', '丁複方'),
+                ('丙複方',),
+                ('丙複方', '丁複方'),
+                ('丁複方',),
+            ])
+            self.assertListEqual(m_gen.call_args_list, [
+                mock.call(0, [
+                    (0, 100.0, (), ()),
+                ]),
+                mock.call(1, [
+                    (0, 100.0, (), ()),
+                    (1, 100.0, ('甲複方',), (1.0,)),
+                    (1, 100.0, ('乙複方',), (1.0,)),
+                    (1, 100.0, ('丙複方',), (1.0,)),
+                    (1, 100.0, ('丁複方',), (1.0,)),
+                ]),
+                mock.call(2, [
+                    (0, 100.0, (), ()),
+                    (1, 100.0, ('甲複方',), (1.0,)),
+                    (2, 100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                    (2, 100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                    (2, 100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
+                    (1, 100.0, ('乙複方',), (1.0,)),
+                    (2, 100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
+                    (2, 100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
+                    (1, 100.0, ('丙複方',), (1.0,)),
+                    (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
+                    (1, 100.0, ('丁複方',), (1.0,)),
+                ]),
+            ])
+
+    def test_generate_combinations_beam_width(self):
+        """Should pass items up to beam width in order of match_pct for each (non-last) depth."""
+        def se_eval(combo, *, initial_guess=None):
+            return combo, (1.0,) * len(combo), 50.0 + 10 * len(combo)
+
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+
+        searcher._set_context(target_composition, max_cformulas=3, top_n=1,
+                              beam_width_factor=3, beam_multiplier=10)
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates', side_effect=self._se_heur), \
+             mock.patch.object(searcher, 'generate_unique_combinations_at_depth',
+                               wraps=searcher.generate_unique_combinations_at_depth) as m_gen:
+            combos = list(searcher.generate_combinations())
+            self.assertEqual(combos, [
+                (),
+                ('甲複方', '乙複方'),
+                ('甲複方', '乙複方', '丙複方'),
+                ('甲複方', '乙複方', '丁複方'),
+                ('甲複方', '丙複方'),
+                ('甲複方', '丙複方', '丁複方'),
+            ])
+            self.assertListEqual(m_gen.call_args_list, [
+                mock.call(0, [
+                    (0, 100.0, (), ()),
+                ]),
+                mock.call(1, [
+                    (0, 100.0, (), ()),
+                    (1, 60.0, ('甲複方',), (1.0,)),
+                    (1, 60.0, ('乙複方',), (1.0,)),
+                ]),
+                mock.call(2, [
+                    (0, 100.0, (), ()),
+                    (2, 70.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                    (2, 70.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                ]),
+            ])
+
+    def test_generate_unique_combinations_at_depth(self):
+        """Should remove generated items with same combo set."""
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition)
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丁複方',), (1.0,)),
+            (1, 100.0, ('丙複方',), (1.0,)),
+        ]
+        gen_values = (
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丁複方',), (1.0,)),
+            (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+            (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
+            (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
+            (1, 100.0, ('丙複方',), (1.0,)),
+            (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
+            (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
+            (2, 100.0, ('丙複方', '甲複方'), (1.0, 1.0)),
+            (1, 100.0, ('乙複方',), (1.0,)),
+            (2, 100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
+            (2, 100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
+            (2, 100.0, ('乙複方', '甲複方'), (1.0, 1.0)),
+            (1, 100.0, ('甲複方',), (1.0,)),
+            (2, 100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
+            (2, 100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+            (2, 100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+        )
+        with mock.patch.object(searcher, 'generate_combinations_at_depth',
+                               return_value=gen_values):
+            items = list(searcher.generate_unique_combinations_at_depth(1, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丙複方', '甲複方'), (1.0, 1.0)),
+                (1, 100.0, ('乙複方',), (1.0,)),
+                (2, 100.0, ('乙複方', '甲複方'), (1.0, 1.0)),
+                (1, 100.0, ('甲複方',), (1.0,)),
+            ])
+
+    def test_generate_combinations_at_depth_basic(self):
+        """Should generate items through `generate_heuristic_candidates` for the depth.
+
+        - Should re-generate the input candidates.
+        - Should generate candidates extended with one extra formula.
+        - Should not extend candidates with smaller depth.
+        """
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, top_n=1,
+                              beam_width_factor=1, beam_multiplier=10)
+
+        # depth 0
+        candidates = [(0, 100.0, (), ())]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval):
+            items = list(searcher.generate_combinations_at_depth(0, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (1, 100.0, ('甲複方',), (1.0,)),
+                (1, 100.0, ('乙複方',), (1.0,)),
+            ])
+
+        # depth 1
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丙複方',), (1.0,)),
+            (1, 100.0, ('丁複方',), (1.0,)),
+        ]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval):
+            items = list(searcher.generate_combinations_at_depth(1, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
+                (2, 100.0, ('丙複方', '甲複方'), (1.0, 1.0)),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '乙複方'), (1.0, 1.0)),
+            ])
+
+        # depth 2
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丁複方',), (1.0,)),
+            (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+        ]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval):
+            items = list(searcher.generate_combinations_at_depth(2, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+                (3, 100.0, ('丁複方', '丙複方', '乙複方'), (1.0, 1.0, 1.0)),
+                (3, 100.0, ('丁複方', '丙複方', '甲複方'), (1.0, 1.0, 1.0)),
+            ])
+
+    def test_generate_combinations_at_depth_pool_size_basic(self):
+        """Should limit extended combos within pool_size.
+
+        - Expected pool_size = (top_n * beam_width_factor) * beam_multiplier
+        """
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+
+        # Expected pool_size = (1 * 1) * 2 = 2
+        searcher._set_context(target_composition, top_n=1,
+                              beam_width_factor=1, beam_multiplier=2)
+
+        # depth 0
+        candidates = [(0, 100.0, (), ())]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates',
+                               wraps=searcher.generate_heuristic_candidates) as m_heur:
+            items = list(searcher.generate_combinations_at_depth(0, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (1, 100.0, ('丁複方',), (1.0,)),
+            ])
+            self.assertListEqual(m_heur.call_args_list, [
+                mock.call((), (), 2, mock.ANY),
+            ])
+
+        # depth 1
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('丙複方',), (1.0,)),
+            (1, 100.0, ('丁複方',), (1.0,)),
+        ]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates',
+                               wraps=searcher.generate_heuristic_candidates) as m_heur:
+            items = list(searcher.generate_combinations_at_depth(1, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (2, 100.0, ('丙複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丙複方', '丁複方'), (1.0, 1.0)),
+                (1, 100.0, ('丁複方',), (1.0,)),
+                (2, 100.0, ('丁複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('丁複方', '甲複方'), (1.0, 1.0)),
+            ])
+            self.assertListEqual(m_heur.call_args_list, [
+                mock.call(('丙複方',), (1.0,), 2, mock.ANY),
+                mock.call(('丁複方',), (1.0,), 2, mock.ANY),
+            ])
+
+    def test_generate_combinations_at_depth_pool_size_zero(self):
+        """Should check all extended combos without heuristic if multiplier = 0"""
+        database, target_composition = self._sample_data()
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, top_n=1,
+                              beam_width_factor=1, beam_multiplier=0)
+
+        # depth 0
+        candidates = [(0, 100.0, (), ())]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates',
+                               wraps=searcher.generate_heuristic_candidates) as m_heur:
+            items = list(searcher.generate_combinations_at_depth(0, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('甲複方',), (1.0,)),
+                (1, 100.0, ('乙複方',), (1.0,)),
+                (1, 100.0, ('丙複方',), (1.0,)),
+                (1, 100.0, ('丁複方',), (1.0,)),
+            ])
+            m_heur.assert_not_called()
+
+        # depth 1
+        candidates = [
+            (0, 100.0, (), ()),
+            (1, 100.0, ('甲複方',), (1.0,)),
+            (1, 100.0, ('乙複方',), (1.0,)),
+        ]
+        with mock.patch.object(searcher, 'evaluate_combination', side_effect=self._se_eval), \
+             mock.patch.object(searcher, 'generate_heuristic_candidates',
+                               wraps=searcher.generate_heuristic_candidates) as m_heur:
+            items = list(searcher.generate_combinations_at_depth(1, candidates))
+            self.assertEqual(items, [
+                (0, 100.0, (), ()),
+                (1, 100.0, ('甲複方',), (1.0,)),
+                (2, 100.0, ('甲複方', '乙複方'), (1.0, 1.0)),
+                (2, 100.0, ('甲複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('甲複方', '丁複方'), (1.0, 1.0)),
+                (1, 100.0, ('乙複方',), (1.0,)),
+                (2, 100.0, ('乙複方', '甲複方'), (1.0, 1.0)),
+                (2, 100.0, ('乙複方', '丙複方'), (1.0, 1.0)),
+                (2, 100.0, ('乙複方', '丁複方'), (1.0, 1.0)),
+            ])
+            m_heur.assert_not_called()
+
+    def test_generate_heuristic_candidates_single_main_herb(self):
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+            '乙複方': {'乙藥': 1.0, '丙藥': 1.0},
+            '丙複方': {'甲藥': 2.0, '丙藥': 1.0},
+            '甲單方': {'甲藥': 3.0},  # sformula should be ignored
+        }
+        target_composition = {'甲藥': 10.0, '乙藥': 1.5, '丙藥': 1.0}
+        combo = ()
+        dosages = ()
+
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, main_herb_threshold=0.6)
+
+        # check for expected main_herbs
+        self.assertEqual(set(searcher._calculate_main_herb(combo, dosages)), {'甲藥'})
+
+        # check for expected scores
+        main_herbs = dict.fromkeys({'甲藥'})
+        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', main_herbs), 0.500, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', main_herbs), 0.000, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', main_herbs), 0.667, places=3)
+
+        # check for expected order by scores
+        # should limit generated item number within `pool_size`
+        gen = ('甲複方', '乙複方', '丙複方')
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            ['丙複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            ['丙複方', '甲複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=3, gen=gen)),
+            ['丙複方', '甲複方', '乙複方'],
+        )
+
+    def test_generate_heuristic_candidates_multi_main_herbs(self):
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 1.0},
+            '乙複方': {'乙藥': 1.0, '丙藥': 1.0},
+            '丙複方': {'甲藥': 2.0, '丙藥': 1.0},
+            '甲單方': {'甲藥': 3.0},  # sformula should be ignored
+        }
+        target_composition = {'甲藥': 4.0, '乙藥': 4.0, '丙藥': 2.0}
+        combo = ()
+        dosages = ()
+
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, main_herb_threshold=0.6)
+
+        # check for expected main_herbs
+        self.assertEqual(set(searcher._calculate_main_herb(combo, dosages)), {'甲藥', '乙藥'})
+
+        # check for expected scores
+        main_herbs = dict.fromkeys({'甲藥', '乙藥'})
+        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', main_herbs), 1.000, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', main_herbs), 0.500, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', main_herbs), 0.667, places=3)
+
+        # check for expected order by scores
+        # should limit generated item number within `pool_size`
+        gen = ('甲複方', '乙複方', '丙複方')
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            ['甲複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            ['甲複方', '丙複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=3, gen=gen)),
+            ['甲複方', '丙複方', '乙複方'],
+        )
+
+    def test_generate_heuristic_candidates_deep(self):
+        database = {
+            '甲複方': {'甲藥': 1.0, '乙藥': 0.5},
+            '乙複方': {'乙藥': 1.0, '丙藥': 0.5},
+            '丙複方': {'甲藥': 1.0, '丙藥': 1.0},
+        }
+        target_composition = {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0}
+        combo = ('甲複方',)
+        dosages = (1.0,)
+
+        searcher = _searcher.BeamFormulaSearcher(database)
+        searcher._set_context(target_composition, main_herb_threshold=0.6)
+
+        # check for expected main_herbs
+        # remaining dose = {'乙藥': 0.5, '丙藥': 1.0} => main_herbs should '丙藥' (67%)
+        self.assertEqual(set(searcher._calculate_main_herb(combo, dosages)), {'丙藥'})
+
+        # check for expected scores
+        main_herbs = dict.fromkeys({'丙藥'})
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', main_herbs), 0.333, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', main_herbs), 0.500, places=3)
+
+        # check for expected order by scores
+        # should limit generated item number within `pool_size`
+        gen = ('乙複方', '丙複方')
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=1, gen=gen)),
+            ['丙複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=2, gen=gen)),
+            ['丙複方', '乙複方'],
+        )
+        self.assertEqual(
+            list(searcher.generate_heuristic_candidates(combo, dosages, pool_size=3, gen=gen)),
+            ['丙複方', '乙複方'],
+        )
