@@ -326,14 +326,13 @@ class ExhaustiveFormulaSearcher(FormulaSearcher):
 class BeamFormulaSearcher(FormulaSearcher):
     def _set_context(
         self, target_composition, excludes=None, top_n=None, *,
-        beam_width_factor=2.0, beam_multiplier=3.0, main_herb_threshold=0.6,
+        beam_width_factor=2.0, beam_multiplier=3.0,
         **opts,
     ):
         top_n = self.DEFAULT_TOP_N if top_n is None else top_n
         super()._set_context(target_composition, excludes, top_n, **opts)
         self.beam_width = max(ceil(beam_width_factor * top_n), 1)
         self.beam_multiplier = beam_multiplier
-        self.main_herb_threshold = main_herb_threshold
 
     def generate_combinations(self):
         candidates = [(0, 100.0, (), ())]
@@ -391,60 +390,43 @@ class BeamFormulaSearcher(FormulaSearcher):
                 yield new_item
 
     def generate_heuristic_candidates(self, combo, dosages, pool_size, gen):
-        main_herbs = self._calculate_main_herb(combo, dosages)
+        remaining_map = self._calculate_remaining_map(combo, dosages)
+        log.debug('剩餘組成比: %s', remaining_map)
 
         candidate_formulas = heapq.nlargest(
             pool_size,
             gen,
-            key=lambda f: self._calculate_formula_score(f, main_herbs),
+            key=lambda f: self._calculate_formula_score(f, remaining_map),
         )
 
         for formula in candidate_formulas:
             log.debug('快捷輸出: %s', formula)
             yield formula
 
-    def _calculate_main_herb(self, combo, dosages):
-        """計算配方組合中的主要中藥
-
-        按劑量佔比排序，取累積總比例達主藥閾值 main_herb_threshold 的中藥。
-
-        假設主藥閾值為 60%，
-        若中藥佔比為 h1: 60%, h2: 30%, h3: 10%，則取 {h1} 為主藥；
-        若中藥佔比為 h1: 40%, h2: 40%, h3: 20%，則取 {h1, h2} 為主藥。
-        """
+    def _calculate_remaining_map(self, combo, dosages):
         combined_composition = self.get_formula_composition(combo, dosages)
         remaining_composition = {
             herb: fixed_amount
             for herb, amount in self.target_composition.items()
             if (fixed_amount := np.round(amount - combined_composition.get(herb, 0), self.places)) > 0
         }
+        total = sum(remaining_composition.values())
+        return {
+            herb: amount / total
+            for herb, amount in remaining_composition.items()
+        }
 
-        weighted_herbs = sorted(remaining_composition.items(), key=lambda item: -item[1])
-        log.debug('剩餘組成: %s', weighted_herbs)
-
-        main_herbs = {}
-        weight = 0
-        total = sum(a for _, a in weighted_herbs)
-        for herb, amount in weighted_herbs:
-            main_herbs[herb] = None
-            weight += amount
-            if weight / total >= self.main_herb_threshold:
-                break
-        log.debug('主要中藥: %s', tuple(main_herbs))
-
-        return main_herbs
-
-    def _calculate_formula_score(self, formula, main_herbs):
+    def _calculate_formula_score(self, formula, remaining_map):
         """計算複方評分，以估算其是否適合填補目前的剩餘中藥組成
 
-        評分方式為計算複方中主要中藥佔全方的比例。
+        評分方式為各中藥佔比與其在剩餘中藥佔比的乘積和，表示此複方的總貢獻度。
         """
-        weight = 0
-        total = 0
-        for herb, amount in self.database[formula].items():
-            if herb in main_herbs:
-                weight += amount
-            total += amount
-        score = weight / total if total > 0 else 0
+        composition = self.database[formula]
+        score = 0
+        total = sum(composition.values())
+        if total == 0:
+            return 0
+        for herb, amount in composition.items():
+            score += remaining_map.get(herb, 0) * amount / total
         log.debug('快捷估值: %s: %.3f', formula, score)
         return score
