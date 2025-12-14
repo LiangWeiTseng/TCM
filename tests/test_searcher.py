@@ -964,7 +964,7 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         database = {'甲複方': {'甲藥': 1.0, '乙藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0}
         remaining_map = {'甲藥': 0.5, '乙藥': 0.5}
-        expected_scores = {'甲複方': 0.5}
+        expected_scores = {'甲複方': 1.000}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
@@ -972,14 +972,14 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0}
         remaining_map = {'甲藥': 0.5, '乙藥': 0.5}
-        expected_scores = {'甲複方': 0.5}
+        expected_scores = {'甲複方': 0.707}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0, '乙藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0}
         remaining_map = {'甲藥': 0.25, '乙藥': 0.25, '丙藥': 0.25, '丁藥': 0.25}
-        expected_scores = {'甲複方': 0.25}
+        expected_scores = {'甲複方': 0.707}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
@@ -987,21 +987,21 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0}
         remaining_map = {'甲藥': 1 / 3, '乙藥': 1 / 3, '丙藥': 1 / 3}
-        expected_scores = {'甲複方': 1 / 3}
+        expected_scores = {'甲複方': 0.577}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 2.0, '乙藥': 1.0}
         remaining_map = {'甲藥': 2 / 3, '乙藥': 1 / 3}
-        expected_scores = {'甲複方': 2 / 3}
+        expected_scores = {'甲複方': 0.894}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 2.0}
         remaining_map = {'甲藥': 1 / 3, '乙藥': 2 / 3}
-        expected_scores = {'甲複方': 1 / 3}
+        expected_scores = {'甲複方': 0.447}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
@@ -1009,21 +1009,21 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0}
         remaining_map = {'甲藥': 0.25, '乙藥': 0.25, '丙藥': 0.25, '丁藥': 0.25}
-        expected_scores = {'甲複方': 0.25}
+        expected_scores = {'甲複方': 0.5}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 3.0, '乙藥': 1.0}
         remaining_map = {'甲藥': 0.75, '乙藥': 0.25}
-        expected_scores = {'甲複方': 0.75}
+        expected_scores = {'甲複方': 0.949}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 3.0}
         remaining_map = {'甲藥': 0.25, '乙藥': 0.75}
-        expected_scores = {'甲複方': 0.25}
+        expected_scores = {'甲複方': 0.316}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
@@ -1031,21 +1031,21 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         database = {'甲複方': {'甲藥': 1.0, '乙藥': 1.0}}
         target_composition = {'甲藥': 1.0}
         remaining_map = {'甲藥': 1.0}
-        expected_scores = {'甲複方': 0.5}
+        expected_scores = {'甲複方': 0.707}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0, '乙藥': 1.0, '丙藥': 1.0, '丁藥': 1.0}}
         target_composition = {'甲藥': 1.0, '乙藥': 1.0}
         remaining_map = {'甲藥': 0.5, '乙藥': 0.5}
-        expected_scores = {'甲複方': 0.25}
+        expected_scores = {'甲複方': 0.707}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
         database = {'甲複方': {'甲藥': 1.0, '乙藥': 3.0}}
         target_composition = {'甲藥': 1.0}
         remaining_map = {'甲藥': 1.0}
-        expected_scores = {'甲複方': 0.25}
+        expected_scores = {'甲複方': 0.316}
         self._check_heuristic_scoring(database, target_composition, combo, dosages,
                                       remaining_map, expected_scores)
 
@@ -1088,9 +1088,9 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertEqual(searcher._calculate_remaining_map(combo, dosages), remaining_map)
 
         # check for expected scores
-        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', remaining_map), 0.460, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.100, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.560, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', remaining_map), 0.800, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.174, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.924, places=3)
 
         # check for expected order by scores
         # should limit generated item number within `quota`
@@ -1130,9 +1130,9 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertEqual(searcher._calculate_remaining_map(combo, dosages), remaining_map)
 
         # check for expected scores
-        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', remaining_map), 0.400, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.300, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.333, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('甲複方', remaining_map), 0.943, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.707, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.745, places=3)
 
         # check for expected order by scores
         # should limit generated item number within `quota`
@@ -1171,8 +1171,8 @@ class TestBeamFormulaSearcher(unittest.TestCase):
         self.assertEqual(searcher._calculate_remaining_map(combo, dosages), remaining_map)
 
         # check for expected scores
-        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.444, places=3)
-        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.333, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('乙複方', remaining_map), 0.800, places=3)
+        self.assertAlmostEqual(searcher._calculate_formula_score('丙複方', remaining_map), 0.632, places=3)
 
         # check for expected order by scores
         # should limit generated item number within `quota`

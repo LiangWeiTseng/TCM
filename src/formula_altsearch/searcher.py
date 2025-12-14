@@ -450,14 +450,34 @@ class BeamFormulaSearcher(FormulaSearcher):
     def _calculate_formula_score(self, formula, remaining_map):
         """計算複方評分，以估算其是否適合填補目前的剩餘中藥組成
 
-        評分方式為各中藥佔比與其在剩餘中藥佔比的乘積和，表示此複方的總貢獻度。
+        評分方式為餘弦相似性 (cosine similarity)：將待測中藥組成與目標中藥組成
+        分別視為多維空間中二個從原點出發的向量 OA(a1, a2, a3, ...),
+        OB(b1, b2, b3, ...)，計算向量 OA 與向量 OB 的夾角。值為 1 表示二者夾角
+        為 0 度，此時此複方（按特定比例縮放後）可完美填補剩餘中藥組成；值為 0
+        表示二者夾角為 90 度，此時此複方不可能填補剩餘中藥組成。
+
+        餘弦相似性與數值大小無關，用「劑量組成」或「劑量組成比」皆可計算，理論上
+        前者可省略把劑量轉換成比例的運算，但實測後者較快，可能是因後者的值固定在
+        0~1，浮點數運算在底層處理器較易最佳化所致。
         """
         composition = self.database[formula]
-        score = 0
-        total = sum(composition.values())
-        if total == 0:
-            return 0
-        for herb, amount in composition.items():
-            score += remaining_map.get(herb, 0) * amount / total
+        herbs = set(composition)
+        herbs.update(remaining_map)
+
+        try:
+            total = sum(composition.values())
+            sum_ab = 0.0
+            sum_a_sq = 0.0
+            sum_b_sq = 0.0
+            for herb in herbs:
+                a = composition.get(herb, 0.0) / total
+                b = remaining_map.get(herb, 0.0)
+                sum_ab += a * b
+                sum_a_sq += a ** 2.0
+                sum_b_sq += b ** 2.0
+            score = sum_ab / (sqrt(sum_a_sq) * sqrt(sum_b_sq))
+        except ZeroDivisionError:
+            return 0.0
+
         log.debug('快捷估值: %s: %.3f', formula, score)
         return score
