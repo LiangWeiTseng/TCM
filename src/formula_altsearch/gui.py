@@ -123,23 +123,23 @@ def create_app():
                         max_cformula_dose = gr.Number(value=50.0, minimum=1.0, step=1.0, label='最大科中複方劑量')
                         max_sformula_dose = gr.Number(value=50.0, minimum=1.0, step=1.0, label='最大科中單方劑量')
                     penalty = gr.Number(value=2.0, minimum=0.0, step=0.1, label='非目標藥材懲罰倍率')
+                
                 with gr.Row():
                     btn = gr.Button('開始搜尋', variant='primary')
                     btn_list_formulas = gr.Button('列出所有方劑')
                     btn_list_herbs = gr.Button('列出所有藥材')
 
             with gr.Column():
-output_txt = gr.Code(
-    label='查詢結果',
-    language=None,
-    show_label=False,
-    container=False,
-    # 直接刪除 show_line_numbers 那一行
-    wrap_lines=True,
-    lines=3,
-    buttons=[],
-    visible=False,
-)
+                output_txt = gr.Code(
+                    label='查詢結果',
+                    language=None,
+                    show_label=False,
+                    container=False,
+                    wrap_lines=True,
+                    lines=3,
+                    buttons=[],
+                    visible=False,
+                )
 
         btn.click(
             fn=search,
