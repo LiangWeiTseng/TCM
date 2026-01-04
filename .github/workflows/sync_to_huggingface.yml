@@ -1,0 +1,22 @@
+name: Sync to Hugging Face Hub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # 這裡的 LiangWeiTseng 是你的帳號，formula-altsearch 是你的 Space 名稱
+          git push --force https://LiangWeiTseng:$HF_TOKEN@huggingface.co/spaces/LiangWeiTseng/formula-altsearch main
