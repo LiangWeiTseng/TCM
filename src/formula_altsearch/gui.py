@@ -136,9 +136,9 @@ def create_app():
             show_label=False,
             container=False,
             #show_line_numbers=False,
-            wrap_lines=True,
+            #wrap_lines=True,
             lines=3,
-            buttons=[],
+            #buttons=[],
             visible=False,
         )
 
